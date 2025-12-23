@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>工程机械保养清单生成器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            background: linear-gradient(135deg, #2c5364 0%, #203a43 100%);
+            color: white;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+
+        .input-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c5364;
+        }
+
+        select, input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #2c5364;
+            box-shadow: 0 0 0 3px rgba(44, 83, 100, 0.1);
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-generate {
+            background-color: #2c5364;
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-generate:hover {
+            background-color: #203a43;
+            transform: translateY(-2px);
+        }
+
+        .btn-export {
+            background-color: #4CAF50;
+            color: white;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .btn-export:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .result-section {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            display: none;
+        }
+
+        .result-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            color: #2c5364;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .maintenance-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .maintenance-table th, .maintenance-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .maintenance-table th {
+            background-color: #f8f9fa;
+            color: #2c5364;
+            font-weight: 600;
+        }
+
+        .maintenance-table tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .export-options {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .export-btn {
+            background-color: #008CBA;
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+        }
+
+        .export-btn:hover {
+            background-color: #007bb5;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .input-section, .result-section {
+                padding: 20px;
+            }
+
+            .btn-group {
+                flex-direction: column;
+            }
+        }
+    </style>
+    <!-- 引入PDF导出库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- 引入Excel导出库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- 引入html2canvas用于图片导出 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header>
+            <h1>工程机械保养清单生成器</h1>
+            <p class="subtitle">专业工程车辆保养方案 | 按小时/公里数智能生成</p>
+        </header>
+
+        <!-- 输入区域 -->
+        <section class="input-section">
+            <div class="form-group">
+                <label for="machine-type">工程车辆类型</label>
+                <select id="machine-type" required>
+                    <option value="">请选择车辆类型</option>
+                    <option value="挖掘机">挖掘机</option>
+                    <option value="装载机">装载机</option>
+                    <option value="起重机">起重机</option>
+                    <option value="推土机">推土机</option>
+                    <option value="压路机">压路机</option>
+                    <option value="叉车">叉车</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="working-hours">工作小时数/公里数</label>
+                <input type="number" id="working-hours" placeholder="请输入小时数或公里数（例如：500）" min="0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="brand">车辆品牌</label>
+                <select id="brand">
+                    <option value="">请选择品牌（可选）</option>
+                    <option value="卡特彼勒">卡特彼勒</option>
+                    <option value="小松">小松</option>
+                    <option value="三一重工">三一重工</option>
+                    <option value="徐工">徐工</option>
+                    <option value="中联重科">中联重科</option>
+                    <option value="沃尔沃">沃尔沃</option>
+                    <option value="其他">其他</option>
+                </select>
+            </div>
+
+            <div class="btn-group">
+                <button class="btn-generate" onclick="generateMaintenanceList()">生成保养清单</button>
+                <button class="btn-export" onclick="exportData()" disabled id="export-btn">导出清单</button>
+            </div>
+        </section>
+
+        <!-- 结果展示区域 -->
+        <section class="result-section" id="result-section">
+            <h2 class="result-title">保养清单</h2>
+            <div id="maintenance-result">
+                <table class="maintenance-table" id="maintenance-table">
+                    <thead>
+                        <tr>
+                            <th>保养项目</th>
+                            <th>配件名称</th>
+                            <th>数量</th>
+                            <th>更换周期</th>
+                            <th>备注</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- 生成的内容会插入到这里 -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="export-options">
+                <button class="export-btn" onclick="exportToPDF()">导出PDF</button>
+                <button class="export-btn" onclick="exportToExcel()">导出Excel</button>
+                <button class="export-btn" onclick="exportToImage()">导出图片</button>
+            </div>
+        </section>
+
+        <footer>
+            <p>© 2025 工程机械保养清单生成器 | 专业工程车辆保养服务</p>
+        </footer>
+    </div>
+
+    <script>
+        // 保养数据配置
+        const maintenanceData = {
+            "挖掘机": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "18L", cycle: "500小时", note: "使用专用工程机械机油" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "空滤清洁", parts: "空气滤清器", qty: "1个", cycle: "500小时", note: "视情况更换" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "18L", cycle: "1000小时", note: "使用专用工程机械机油" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "1000小时", note: "主滤芯+预滤芯" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压回油滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "18L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压回油滤芯", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "液压油更换", parts: "液压油", qty: "200L", cycle: "2000小时", note: "视油质情况" },
+                    { item: "冷却液更换", parts: "防冻液", qty: "40L", cycle: "2000小时", note: "" }
+                ]
+            },
+            "装载机": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "15L", cycle: "500小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "15L", cycle: "1000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "1000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "15L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "2个", cycle: "2000小时", note: "回油+吸油" },
+                    { item: "液压油更换", parts: "液压油", qty: "180L", cycle: "2000小时", note: "" },
+                    { item: "变速箱油", parts: "变速箱润滑油", qty: "60L", cycle: "2000小时", note: "" }
+                ]
+            },
+            "起重机": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "22L", cycle: "500小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "22L", cycle: "1000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "1000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "22L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "3个", cycle: "2000小时", note: "全套滤芯" },
+                    { item: "液压油更换", parts: "液压油", qty: "300L", cycle: "2000小时", note: "" },
+                    { item: "冷却液更换", parts: "防冻液", qty: "50L", cycle: "2000小时", note: "" }
+                ]
+            },
+            "推土机": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "20L", cycle: "500小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "20L", cycle: "1000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "1000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "20L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "液压油更换", parts: "液压油", qty: "220L", cycle: "2000小时", note: "" },
+                    { item: "终传动油", parts: "齿轮油", qty: "40L", cycle: "2000小时", note: "左右终传动" }
+                ]
+            },
+            "压路机": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "12L", cycle: "500小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "12L", cycle: "1000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "1000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "12L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "2个", cycle: "2000小时", note: "" },
+                    { item: "液压油更换", parts: "液压油", qty: "150L", cycle: "2000小时", note: "" },
+                    { item: "冷却液更换", parts: "防冻液", qty: "30L", cycle: "2000小时", note: "" }
+                ]
+            },
+            "叉车": {
+                500: [
+                    { item: "机油更换", parts: "发动机机油", qty: "8L", cycle: "500小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "500小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "500小时", note: "" }
+                ],
+                1000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "8L", cycle: "1000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "1000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "1000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "1000小时", note: "" }
+                ],
+                2000: [
+                    { item: "机油更换", parts: "发动机机油", qty: "8L", cycle: "2000小时", note: "" },
+                    { item: "机油滤芯", parts: "机油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "燃油滤芯", parts: "燃油滤清器", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "空滤更换", parts: "空气滤清器", qty: "1套", cycle: "2000小时", note: "" },
+                    { item: "液压油滤芯", parts: "液压滤芯", qty: "1个", cycle: "2000小时", note: "" },
+                    { item: "液压油更换", parts: "液压油", qty: "60L", cycle: "2000小时", note: "" },
+                    { item: "变速箱油", parts: "变速箱油", qty: "15L", cycle: "2000小时", note: "" }
+                ]
+            }
+        };
+
+        // 生成保养清单
+        function generateMaintenanceList() {
+            const machineType = document.getElementById("machine-type").value;
+            const workingHours = parseInt(document.getElementById("working-hours").value);
+            const brand = document.getElementById("brand").value;
+
+            // 验证输入
+            if (!machineType) {
+                alert("请选择工程车辆类型！");
+                return;
+            }
+            if (isNaN(workingHours) || workingHours <= 0) {
+                alert("请输入有效的小时数/公里数！");
+                return;
+            }
+
+            // 确定保养周期
+            let cycle = 500;
+            if (workingHours >= 2000) {
+                cycle = 2000;
+            } else if (workingHours >= 1000) {
+                cycle = 1000;
+            }
+
+            // 获取对应保养数据
+            const data = maintenanceData[machineType][cycle];
+            const tableBody = document.getElementById("table-body");
+            tableBody.innerHTML = "";
+
+            // 生成表格内容
+            data.forEach(item => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>${item.item}</td>
+                    <td>${item.parts}</td>
+                    <td>${item.qty}</td>
+                    <td>${item.cycle}</td>
+                    <td>${item.note || "-"}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            // 显示结果区域
+            document.getElementById("result-section").style.display = "block";
+            // 启用导出按钮
+            document.getElementById("export-btn").disabled = false;
+
+            // 如果选择了品牌，添加备注
+            if (brand) {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td colspan="5" style="text-align:center; font-weight:600; color:#2c5364;">
+                        适配品牌：${brand} | 保养建议仅供参考，请以厂家手册为准
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            }
+        }
+
+        // 导出功能总入口
+        function exportData() {
+            alert("请选择下方具体的导出格式（PDF/Excel/图片）！");
+        }
+
+        // 导出PDF
+        function exportToPDF() {
+            const element = document.getElementById("maintenance-result");
+            const opt = {
+                margin: 10,
+                filename: `工程机械保养清单_${document.getElementById("machine-type").value}_${document.getElementById("working-hours").value}小时.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // 导出Excel
+        function exportToExcel() {
+            const machineType = document.getElementById("machine-type").value;
+            const workingHours = document.getElementById("working-hours").value;
+            
+            // 准备Excel数据
+            const ws_data = [
+                ["工程机械保养清单"],
+                ["车辆类型", machineType],
+                ["工作小时/公里数", workingHours],
+                ["车辆品牌", document.getElementById("brand").value || "未选择"],
+                [""],
+                ["保养项目", "配件名称", "数量", "更换周期", "备注"]
+            ];
+
+            // 获取表格数据
+            const rows = document.querySelectorAll("#table-body tr");
+            rows.forEach(row => {
+                const rowData = [];
+                const cells = row.querySelectorAll("td");
+                // 跳过合计行
+                if (cells.length === 5) {
+                    cells.forEach(cell => {
+                        rowData.push(cell.textContent);
+                    });
+                    ws_data.push(rowData);
+                }
+            });
+
+            // 创建Excel文件
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(ws_data);
+            XLSX.utils.book_append_sheet(wb, ws, "保养清单");
+            
+            // 保存文件
+            XLSX.writeFile(wb, `工程机械保养清单_${machineType}_${workingHours}小时.xlsx`);
+        }
+
+        // 导出图片
+        function exportToImage() {
+            const element = document.getElementById("maintenance-result");
+            html2canvas(element, {
+                scale: 2,
+                useCORS: true,
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement("a");
+                link.download = `工程机械保养清单_${document.getElementById("machine-type").value}_${document.getElementById("working-hours").value}小时.png`;
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
